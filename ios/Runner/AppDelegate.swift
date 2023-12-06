@@ -1,3 +1,4 @@
+import AVFAudio
 import Flutter
 import UIKit
 import flutter_local_notifications
@@ -15,6 +16,17 @@ import flutter_local_notifications
 
     if #available(iOS 10.0, *) {
       UNUserNotificationCenter.current().delegate = self as UNUserNotificationCenterDelegate
+    }
+    // cf. https://github.com/dlutton/flutter_tts/issues/344
+    let audioSession = AVAudioSession.sharedInstance()
+    do {
+      try audioSession.setCategory(
+        AVAudioSession.Category.playback, mode: AVAudioSession.Mode.voicePrompt,
+        options: [
+          AVAudioSession.CategoryOptions.mixWithOthers, AVAudioSession.CategoryOptions.duckOthers,
+        ])
+    } catch {
+      print("Setting category to AVAudioSessionCategoryPlayback failed.")
     }
 
     GeneratedPluginRegistrant.register(with: self)

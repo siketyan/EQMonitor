@@ -655,6 +655,15 @@ packages:
     description: flutter
     source: sdk
     version: "0.0.0"
+  flutter_tts:
+    dependency: "direct main"
+    description:
+      path: "."
+      ref: HEAD
+      resolved-ref: "14b3676b0a49531d2b270a0f669cda0c0ca739da"
+      url: "https://github.com/khjde1207/flutter_tts.git"
+    source: git
+    version: "3.7.0"
   flutter_web_plugins:
     dependency: transitive
     description: flutter

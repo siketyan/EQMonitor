@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:developer';
 import 'dart:io';
 
 import 'package:device_info_plus/device_info_plus.dart';
@@ -18,6 +17,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:flutter_tts/flutter_tts.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -26,7 +26,9 @@ import 'package:talker_flutter/talker_flutter.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  FirebaseMessaging.onBackgroundMessage(onBackgroundMessage);
+  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+
+  FirebaseMessaging.onMessage.listen(_firebaseMessagingBackgroundHandler);
 
   final talker = TalkerFlutter.init();
   FlutterError.onError = (error) {
@@ -53,12 +55,8 @@ Future<void> main() async {
     (Platform.isIOS ? deviceInfo.iosInfo : Future<Null>.value()),
     FlutterLocalNotificationsPlugin().initialize(
       const InitializationSettings(
-        iOS: DarwinInitializationSettings(
-          requestAlertPermission: false,
-          requestSoundPermission: false,
-          requestBadgePermission: false,
-        ),
-        android: AndroidInitializationSettings('mipmap/ic_launcher'),
+        iOS: DarwinInitializationSettings(),
+        android: AndroidInitializationSettings('drawable/ic_launcher'),
       ),
     ),
     _registerNotificationChannelIfNeeded(),
@@ -102,6 +100,50 @@ Future<void> _registerNotificationChannelIfNeeded() async {
 }
 
 @pragma('vm:entry-point')
-Future<void> onBackgroundMessage(RemoteMessage message) async {
-  log('onBackgroundMessage: $message');
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  try {
+    print('onBackgroundMessage: ${message.toMap()}');
+
+    final flutterTts = FlutterTts();
+    print('*** flutterTts: $flutterTts ***');
+    await flutterTts.setIosAudioCategory(
+      IosTextToSpeechAudioCategory.ambient,
+      [
+        IosTextToSpeechAudioCategoryOptions.allowBluetooth,
+        IosTextToSpeechAudioCategoryOptions.allowBluetoothA2DP,
+        IosTextToSpeechAudioCategoryOptions.mixWithOthers,
+      ],
+      IosTextToSpeechAudioMode.voicePrompt,
+    );
+    await flutterTts.setSharedInstance(true);
+
+    final ttsMessage = message.notification?.body ?? '通知が届きました';
+
+    final tts = FlutterTts();
+    await tts.reset();
+    tts.setErrorHandler((error) {
+      print('TTS ERROR: $error');
+    });
+    tts.setStartHandler(() {
+      print('START');
+    });
+    tts.setProgressHandler((text, start, end, word) {
+      print('PROGRESS: $text, $start, $end, $word');
+    });
+    print('START');
+    final _ = await tts.speak(ttsMessage);
+  } catch (e, stack) {
+    print('onBackgroundMessage: $e\n$stack');
+
+    await FlutterLocalNotificationsPlugin().show(
+      1,
+      '通知が届きました',
+      e.toString(),
+      const NotificationDetails(
+        iOS: DarwinNotificationDetails(
+          interruptionLevel: InterruptionLevel.critical,
+        ),
+      ),
+    );
+  }
 }

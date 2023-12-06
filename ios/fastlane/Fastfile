@@ -31,5 +31,24 @@ platform :ios do
       ipa: "./Runner.ipa",
     )
   end
+
+
+  desc "Register Devices"
+  lane :register_new_devices do
+    # see the Apple Sample (http://devimages.apple.com/downloads/devices/Multiple-Upload-Samples.zip)
+    register_devices(
+      devices_file: "./fastlane/devices.txt",
+      team_id: "CPL7H8SHVM"
+    )
+    match_after_register
+  end
+
+  desc "match_after_register"
+  lane :match_after_register do
+    # 前回との差分を見て，新しいデバイスが追加されているなら新しくprovisioning profileを作成する
+    match(type: "develop", force_for_new_devices: true)
+    match(type: "adhoc", force_for_new_devices: true)
+    slack(message: "<@hoge> 新しい端末が登録されました！")
+  end
 end
 
